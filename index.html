@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Live Translate" />
+  <title>Live Translator: 简体中文 ↔ English</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --card-live: #172554;
+      --border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-2: #10b981;
+      --danger: #ef4444;
+      --warn-bg: rgba(245, 158, 11, 0.16);
+      --warn-border: rgba(245, 158, 11, 0.5);
+      --warn-text: #fcd34d;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(10px);
+      gap: 8px;
+    }
+
+    .dir-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(59, 130, 246, 0.18);
+      border: 1px solid rgba(59, 130, 246, 0.45);
+      color: #93c5fd;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 8px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .dir-btn.reverse {
+      background: rgba(16, 185, 129, 0.18);
+      border-color: rgba(16, 185, 129, 0.45);
+      color: #6ee7b7;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .pill-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .pill-btn.on {
+      color: #f8fafc;
+      border-color: var(--accent);
+      background: rgba(59, 130, 246, 0.2);
+    }
+
+    #statusBar {
+      padding: 8px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      background: #0b1120;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .dot.active {
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.25);
+      animation: pulse 1.3s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .https-banner {
+      display: none;
+      margin: 12px 16px 0;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      color: var(--warn-text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .https-banner.visible {
+      display: block;
+    }
+
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .live-box {
+      background: var(--card-live);
+      border: 1px solid #2563eb;
+      border-radius: 16px;
+      padding: 14px 16px;
+      display: none;
+    }
+
+    .live-box.visible {
+      display: block;
+    }
+
+    .live-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #60a5fa;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+
+    .src-text {
+      font-size: 16px;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    .dst-text {
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      line-height: 1.4;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .card-tag {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .mini-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: none;
+      color: #e2e8f0;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      margin: auto;
+      max-width: 300px;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      background: rgba(15, 23, 42, 0.96);
+      padding: 12px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .text-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px 14px;
+      border-radius: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    .send-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 0 16px;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .mic-btn {
+      width: 100%;
+      padding: 16px;
+      border-radius: 16px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-size: 17px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .mic-btn.reverse {
+      background: var(--accent-2);
+    }
+
+    .mic-btn.listening {
+      background: var(--danger);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <button class="dir-btn" id="dirBtn" title="Tap to switch translation direction">
+      <span id="dirLabel">简体中文 → English</span>
+      <span>⇄</span>
+    </button>
+    <div class="header-actions">
+      <button class="pill-btn" id="autoSpeakBtn">🔊 Auto-Speak: OFF</button>
+      <button class="pill-btn" id="clearBtn">Clear</button>
+    </div>
+  </header>
+
+  <div id="statusBar">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">Tap "Start Live Listening" below</span>
+  </div>
+
+  <div class="https-banner" id="httpsBanner">
+    <strong>Local File Detected:</strong> iPhone Safari blocks the microphone on local files. Upload this <code>index.html</code> file to <strong>tiiny.host</strong> in Safari to get an <code>https://</code> link, then open that link in Safari.
+  </div>
+
+  <main id="feed">
+    <div class="live-box" id="liveBox">
+      <div class="live-label" id="liveLabel">Listening Live (简体中文)...</div>
+      <div class="src-text" id="liveSrc">...</div>
+      <div class="dst-text" id="liveDst">Translating...</div>
+    </div>
+
+    <div class="empty-state" id="emptyState">
+      Tap the microphone button to translate <strong>Simplified Chinese → English</strong> live.<br><br>
+      Tap <strong>简体中文 → English ⇄</strong> at the top anytime to reply back in <strong>English → Simplified Chinese</strong>.
+    </div>
+  </main>
+
+  <footer>
+    <div class="text-row">
+      <input type="text" id="manualInput" placeholder="Type Simplified Chinese here..." />
+      <button class="send-btn" id="manualSend">Translate</button>
+    </div>
+    <button class="mic-btn" id="micBtn">🎙️ Start Live Listening (中文)</button>
+  </footer>
+
+  <script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const dirBtn = document.getElementById("dirBtn");
+    const dirLabel = document.getElementById("dirLabel");
+    const autoSpeakBtn = document.getElementById("autoSpeakBtn");
+    const clearBtn = document.getElementById("clearBtn");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const httpsBanner = document.getElementById("httpsBanner");
+    const feed = document.getElementById("feed");
+    const emptyState = document.getElementById("emptyState");
+    const liveBox = document.getElementById("liveBox");
+    const liveLabel = document.getElementById("liveLabel");
+    const liveSrc = document.getElementById("liveSrc");
+    const liveDst = document.getElementById("liveDst");
+    const manualInput = document.getElementById("manualInput");
+    const manualSend = document.getElementById("manualSend");
+    const micBtn = document.getElementById("micBtn");
+
+    if (window.location.protocol === "file:") {
+      httpsBanner.classList.add("visible");
+    }
+
+    // Mode: "zh-en" (Simplified Chinese -> English) or "en-zh" (English -> Simplified Chinese)
+    let mode = "zh-en";
+    let autoSpeak = false;
+    let isListening = false;
+    let recognition = null;
+    let interimTimer = null;
+    let lastInterimQuery = "";
+
+    function getModeConfig() {
+      if (mode === "zh-en") {
+        return {
+          recognitionLang: "zh-CN",
+          sourceCode: "zh-CN",
+          targetCode: "en",
+          ttsLang: "en-US",
+          badgeText: "简体中文 → English",
+          liveTitle: "Listening Live (简体中文)...",
+          listeningStatus: "Listening for Simplified Chinese...",
+          startBtnText: "🎙️ Start Live Listening (中文)",
+          placeholder: "Type Simplified Chinese here...",
+          cardTag: "简体中文 → EN"
+        };
+      } else {
+        return {
+          recognitionLang: "en-US",
+          sourceCode: "en",
+          targetCode: "zh-CN",
+          ttsLang: "zh-CN",
+          badgeText: "English → 简体中文",
+          liveTitle: "Listening Live (English)...",
+          listeningStatus: "Listening for English...",
+          startBtnText: "🎙️ Start Live Listening (EN)",
+          placeholder: "Type English here...",
+          cardTag: "EN → 简体中文"
+        };
+      }
+    }
+
+    function updateDirectionUI() {
+      const cfg = getModeConfig();
+      dirLabel.textContent = cfg.badgeText;
+      liveLabel.textContent = cfg.liveTitle;
+      manualInput.placeholder = cfg.placeholder;
+
+      if (mode === "en-zh") {
+        dirBtn.classList.add("reverse");
+        micBtn.classList.add("reverse");
+      } else {
+        dirBtn.classList.remove("reverse");
+        micBtn.classList.remove("reverse");
+      }
+
+      if (!isListening) {
+        micBtn.textContent = cfg.startBtnText;
+      } else {
+        statusText.textContent = cfg.listeningStatus;
+        if (recognition) {
+          try { recognition.stop(); } catch (e) {}
+        }
+      }
+    }
+
+    dirBtn.addEventListener("click", () => {
+      mode = mode === "zh-en" ? "en-zh" : "zh-en";
+      updateDirectionUI();
+    });
+
+    autoSpeakBtn.addEventListener("click", () => {
+      autoSpeak = !autoSpeak;
+      autoSpeakBtn.textContent = autoSpeak ? "🔊 Auto-Speak: ON" : "🔊 Auto-Speak: OFF";
+      autoSpeakBtn.classList.toggle("on", autoSpeak);
+    });
+
+    async function translateText(text, sourceCode, targetCode) {
+      const cleaned = text.trim();
+      if (!cleaned) return "";
+
+      // Primary: Google Translate GTX endpoint
+      try {
+        const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${encodeURIComponent(sourceCode)}&tl=${encodeURIComponent(targetCode)}&dt=t&q=${encodeURIComponent(cleaned)}`;
+        const res = await fetch(gtxUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            const joined = data[0].map((part) => part[0]).join("");
+            if (joined) return joined;
+          }
+        }
+      } catch (e) {}
+
+      // Backup: MyMemory API
+      try {
+        const mmUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleaned)}&langpair=${encodeURIComponent(sourceCode)}|${encodeURIComponent(targetCode)}`;
+        const res = await fetch(mmUrl);
+        const data = await res.json();
+        return data?.responseData?.translatedText || "(Translation unavailable)";
+      } catch (err) {
+        return "(Network error while translating)";
+      }
+    }
+
+    function speakText(text, ttsLang) {
+      if (!("speechSynthesis" in window) || !text) return;
+      const wasListening = isListening;
+      if (wasListening && recognition) {
+        try { recognition.abort(); } catch (e) {}
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = ttsLang;
+      utterance.onend = () => {
+        if (wasListening && isListening) {
+          setTimeout(() => startRecognitionCycle(), 200);
+        }
+      };
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function addHistoryCard(src, dst, cfg) {
+      if (emptyState) emptyState.style.display = "none";
+      const card = document.createElement("div");
+      card.className = "card";
+      card.innerHTML = `
+        <div class="card-tag">${escapeHtml(cfg.cardTag)}</div>
+        <div class="src-text">${escapeHtml(src)}</div>
+        <div class="dst-text">${escapeHtml(dst)}</div>
+        <div class="card-actions">
+          <button class="mini-btn speak-btn">🔊 Speak</button>
+          <button class="mini-btn copy-btn">📋 Copy</button>
+        </div>
+      `;
+
+      card.querySelector(".speak-btn").addEventListener("click", () => speakText(dst, cfg.ttsLang));
+      card.querySelector(".copy-btn").addEventListener("click", (e) => {
+        navigator.clipboard?.writeText(dst);
+        e.target.textContent = "✅ Copied";
+        setTimeout(() => (e.target.textContent = "📋 Copy"), 1200);
+      });
+
+      liveBox.insertAdjacentElement("afterend", card);
+
+      if (autoSpeak) {
+        speakText(dst, cfg.ttsLang);
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, (m) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+
+    function startRecognitionCycle() {
+      if (!SpeechRecognition) {
+        statusText.textContent = "Speech recognition not supported here. Open this HTTPS link in iPhone Safari.";
+        return;
+      }
+
+      const cfg = getModeConfig();
+      recognition = new SpeechRecognition();
+      recognition.lang = cfg.recognitionLang;
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        statusDot.classList.add("active");
+        statusText.textContent = getModeConfig().listeningStatus;
+        micBtn.textContent = "⏹️ Stop Listening";
+        micBtn.classList.add("listening");
+      };
+
+      recognition.onresult = (event) => {
+        const activeCfg = getModeConfig();
+        let interim = "";
+        let finalText = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalText += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+
+        if (interim) {
+          liveBox.classList.add("visible");
+          liveSrc.textContent = interim;
+          if (interim !== lastInterimQuery && !interimTimer) {
+            lastInterimQuery = interim;
+            interimTimer = setTimeout(async () => {
+              const liveTranslation = await translateText(lastInterimQuery, activeCfg.sourceCode, activeCfg.targetCode);
+              if (isListening && liveBox.classList.contains("visible")) {
+                liveDst.textContent = liveTranslation;
+              }
+              interimTimer = null;
+            }, 600);
+          }
+        }
+
+        if (finalText) {
+          clearTimeout(interimTimer);
+          interimTimer = null;
+          liveBox.classList.remove("visible");
+          liveSrc.textContent = "...";
+          liveDst.textContent = "Translating...";
+
+          translateText(finalText, activeCfg.sourceCode, activeCfg.targetCode).then((translated) => {
+            addHistoryCard(finalText, translated, activeCfg);
+          });
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === "not-allowed") {
+          statusText.textContent = "Mic blocked. Open via HTTPS in Safari & allow Microphone.";
+          stopListening();
+        } else if (event.error !== "no-speech" && event.error !== "aborted") {
+          statusText.textContent = `Mic status: ${event.error}`;
+        }
+      };
+
+      recognition.onend = () => {
+        if (isListening && !window.speechSynthesis.speaking) {
+          setTimeout(() => {
+            if (isListening) startRecognitionCycle();
+          }, 150);
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch (e) {}
+    }
+
+    function startListening() {
+      isListening = true;
+      startRecognitionCycle();
+    }
+
+    function stopListening() {
+      isListening = false;
+      clearTimeout(interimTimer);
+      interimTimer = null;
+      liveBox.classList.remove("visible");
+      statusDot.classList.remove("active");
+      statusText.textContent = "Paused";
+      micBtn.textContent = getModeConfig().startBtnText;
+      micBtn.classList.remove("listening");
+      if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+      }
+    }
+
+    micBtn.addEventListener("click", () => {
+      if (isListening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+
+    clearBtn.addEventListener("click", () => {
+      document.querySelectorAll(".card").forEach((c) => c.remove());
+      if (emptyState) emptyState.style.display = "block";
+    });
+
+    async function handleManualTranslate() {
+      const text = manualInput.value.trim();
+      if (!text) return;
+      manualInput.value = "";
+      const cfg = getModeConfig();
+      const translated = await translateText(text, cfg.sourceCode, cfg.targetCode);
+      addHistoryCard(text, translated, cfg);
+    }
+
+    manualSend.addEventListener("click", handleManualTranslate);
+    manualInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") handleManualTranslate();
+    });
+  </script>
+</body>
+</html>
